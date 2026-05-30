@@ -3,7 +3,7 @@ const Schema =  mongoose.Schema
 
 const transactionSchema = new Schema ({
     transactionId: {
-        type: Number,
+        type: String,
         required: true
     },
     amount: {
@@ -15,16 +15,19 @@ const transactionSchema = new Schema ({
         enum: ["PENDING","FAILED","Completed"],
         required: true
     },
-    from: { 
+    fromUser: { 
         type : mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        default: null
+    },
+    fromSystem: {
+        type: String,
+        default: null
     },
     to: { 
         type : mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true
-
     },
 
 },{timestamps: true})

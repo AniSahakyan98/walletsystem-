@@ -1,8 +1,9 @@
 const { format } = require('mysql2')
 const Transaction = require('../models/transactionDetailsSchema')
 const User = require('../models/usersSchema')
+const stripe = require('../stripe')
 const jwt = require('jsonwebtoken')
-
+const mongoose = require("mongoose")
 
 const userLogin = (async(walletId) => {
     
@@ -34,56 +35,116 @@ const getUsersList = (async() => {
 })
 
 
-//transaction faily - testel
-const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
-    const sender = await User.findOne({ walletId: senderWalletId }); 
-    const recipient = await User.findOne({ walletId: recipientWalletId});
-    let senderWallet = {}
-    let recipientWallet = {};
-    let transaction = {}
-    
-    if (sender !== undefined && recipient !== undefined) {
-        if (amount <= 0) {
-             throw new Error("Amount must be greater than 0");
-        } else if (sender.balance < amount) {
-            throw new Error("Insufficient balance");
-        } else if (sender.balance > amount) {
+//backend sends amount info to stripe by paymentIntents and Frontend uses client_secret to complete payment securely
+const topUp = async(amount,userId)=>{
+    const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount * 100,
+        currency: "usd",
+        metadata: {userId},
+    })
 
-        transaction = await Transaction.create({
+    const user = await User.findOne({walletId: userId});
+    const transaction = await Transaction.create({
+        transactionId: paymentIntent.id,
+        amount,
+        status: "PENDING",
+        fromSystem: "STRIPE",
+        to: user._id
+    });
+
+    console.log(transaction)
+    
+    return {
+        clientSecret: paymentIntent.client_secret,
+        transactionId: paymentIntent.id
+    }
+}
+
+//improve function with session
+const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
+    const session = await mongoose.startSession()
+
+    try{ 
+    session.startTransaction()
+
+    const sender = await User.findOne({ walletId: senderWalletId }).session(session); 
+    const recipient = await User.findOne({ walletId: recipientWalletId}).session(session);
+    
+    
+    if(!sender || !recipient){
+        throw new Error("User not found")
+    }
+    if (amount <= 0) {
+        throw new Error("Amount must be greater than 0"); 
+    } 
+    if(sender.walletId === recipient.walletId){
+        throw new Error("Sender and recipient can not be the same");
+    }
+    if (sender.balance < amount) {
+        throw new Error("Insufficient Balance");
+    }
+
+        await User.updateOne(
+            {_id: sender._id},
+            {$inc: {balance: -amount}}
+        ).session(session)
+
+        await User.updateOne(
+            {_id: recipient._id},
+            {$inc: {balance: amount}}
+        ).session(session)
+
+        transaction = await Transaction.create([{
                 transactionId: Date.now(),
                 amount,
-                status: "PENDING",
-                from: sender._id,
+                status: "Completed",
+                fromUser: sender._id,
                 to: recipient._id
-        })
-
-           senderWallet = await User.findByIdAndUpdate(sender._id, {balance: sender.balance -= amount })
-           recipientWallet = await User.findByIdAndUpdate(recipient._id, {balance: recipient.balance += amount })
-
-           transaction.status = "Completed"
-           await transaction.save()
-        } 
-    } else if(sender === null || recipient === null) {
-       throw new Error("User with the following id doesn't exist");
-    } else  {
-        transaction.status = "FAILED";
-        await transaction.save();
-        throw new Error("Transfer failed")
-    }
-    return {
-            "transactionId": transaction.transactionId,
-            "senderWallet": senderWallet,
-            "recipientWallet": recipientWallet
+        }],{session})
+         
+        await session.commitTransaction()
+        return {
+            "transactionId": transaction[0].transactionId,
+            "senderWallet": sender,
+            "recipientWallet": recipient
             }
-
+        } catch(error) {
+           await session.abortTransaction()
+           throw error
+        } finally {
+            session.endSession()
+        } 
+        
 })
+
+const getTransactions = (async(id) => {
+
+    if(id !== undefined) {
+        const user= await User.findOne({walletId: id})
+        
+        let ins = await Transaction.find({to: user._id})
+        let outs = await Transaction.find({fromUser: user._id})
+
+        return {
+            "ins": ins,
+            "outs": outs
+        }
+
+    } else {
+        throw new Error("User doesn't exist")
+    }
+    
+})
+
 
 
 
 module.exports = {
     transferBalance,
     getUsersList,
-    userLogin
+    userLogin,
+    getTransactions,
+    topUp
 }
 
 //yst id i paramov ugharkvac gtnelu enq ov e sendery, 
