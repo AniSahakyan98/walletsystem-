@@ -63,6 +63,10 @@ const topUp = async(amount,userId)=>{
 const refundFunction = (async(transactionId) => {
     const transaction = await Transaction.findOne({transactionId})
 
+    const userId = transaction.to
+    const amount = transaction.amount
+    console.log(amount)
+
     if(!transaction) {
         throw new Error("Transaction Not Found")
     } 
@@ -76,7 +80,20 @@ const refundFunction = (async(transactionId) => {
     transaction.status = "REFUNDED"
     await transaction.save()
 
+    await User.updateOne({_id: userId},{$inc: {balance: -amount}})
+
+
 })
+//get balance endpoint
+const getUserInfo = (async(walletId) => {
+    const user = await User.findOne({walletId})
+    if(user) {
+        return {"walletId": user.walletId,"name": user.name,"balance": user.balance}
+    } else {
+        throw new Error("No user Found")
+    }
+})
+
 
 
 //improve function with session
@@ -164,7 +181,8 @@ module.exports = {
     userLogin,
     getTransactions,
     topUp,
-    refundFunction
+    refundFunction,
+    getUserInfo
 }
 
 //yst id i paramov ugharkvac gtnelu enq ov e sendery, 

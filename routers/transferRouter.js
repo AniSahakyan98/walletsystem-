@@ -11,6 +11,6 @@ Router.post('/transfer', authMiddleware, controller.transactionBalanceController
 Router.post('/wallet/topUp',authMiddleware,controller.topUp)
 Router.post('/stripe/webhook',stripeController.webhookController)
 Router.post('/refund/:id',controller.refundFunction)
-
+Router.get('/userInfo/:id',controller.getUserInfo)
 module.exports = Router
 

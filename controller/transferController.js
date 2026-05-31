@@ -73,6 +73,17 @@ const refundFunction =(async(req,res) => {
         return res.status(500).json({error: error.message})
     }
 
+
+})
+
+const getUserInfo = (async(req,res) =>{
+    try {
+        const id = req.params.id
+        const userInfo = await services.getUserInfo(id)
+        return res.status(200).json(userInfo)
+    } catch(error) {
+        return res.status(500).json({error: error.message})
+    }
 })
 
 module.exports = {
@@ -81,6 +92,7 @@ module.exports = {
     userLogin,
     getTransactions,
     topUp,
-    refundFunction
+    refundFunction,
+    getUserInfo
 }
 

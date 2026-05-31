@@ -4,7 +4,7 @@ const Schema = mongoose.Schema
 const user = new Schema({
     
     name: {
-        type: Number,
+        type: String,
         required: true
     },
     balance: {
