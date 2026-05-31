@@ -1,6 +1,16 @@
 const User = require('../models/usersSchema')
 const Transaction = require('../models/transactionDetailsSchema')
 
+
+//✅ JWT authentication
+// ✅ Protected routes with middleware
+// ✅ Wallet top-up via Stripe PaymentIntent
+// ✅ Pending transaction creation
+// ✅ Frontend Stripe confirmation flow
+// ✅ Webhook processing
+// ✅ Transaction status updates
+// ✅ Balance updates after successful payment
+
 //update based on notepad
 
 const handleStripeEvent = async(event) => {
@@ -16,13 +26,14 @@ const handleStripeEvent = async(event) => {
         if (!user) {
             throw new Error("User not found for webhook");
         }
-        await User.updateOne(
-            {walletId},
-            {$inc: {balance: amount}}
-        )
+
 
         const existing = await Transaction.findOne({transactionId});
-
+        if (existing.status === "Completed") {
+            throw new Error("Transaction is already completed")
+        }; //if (transaction.status === "Completed") return;
+        
+       
         if (existing) {
 
             await Transaction.findOneAndUpdate(
@@ -34,6 +45,11 @@ const handleStripeEvent = async(event) => {
         } else {
             throw new Error("No existing pending transaction")
         }
+         await User.updateOne(
+            {walletId},
+            {$inc: {balance: amount}}
+        )
+        
 
     }
 }

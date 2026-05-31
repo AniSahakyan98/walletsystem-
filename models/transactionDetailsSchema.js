@@ -12,7 +12,7 @@ const transactionSchema = new Schema ({
     },
     status: {
         type: String,
-        enum: ["PENDING","FAILED","Completed"],
+        enum: ["PENDING","FAILED","Completed","REFUNDED"],
         required: true
     },
     fromUser: { 

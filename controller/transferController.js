@@ -29,7 +29,7 @@ const topUp = (async(req,res) => {
         const userId = req.user.walletId
         const amount = req.body.amount
         const result = await services.topUp(amount,userId)
-        
+
         return res.status(201).json(result)
     } catch(error) {
         res.status(500).json({error:error.message})
@@ -64,12 +64,23 @@ const getTransactions = (async(req,res) => {
     }
 })
 
+const refundFunction =(async(req,res) => {
+    try{
+        const transactionId = req.params.id
+        const refundAmount = await services.refundFunction(transactionId)
+        return res.status(200).json(refundAmount)
+    } catch(error) {
+        return res.status(500).json({error: error.message})
+    }
+
+})
 
 module.exports = {
     transactionBalanceController,
     getUserList,
     userLogin,
     getTransactions,
-    topUp
+    topUp,
+    refundFunction
 }
 

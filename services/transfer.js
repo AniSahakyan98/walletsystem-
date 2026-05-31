@@ -60,6 +60,25 @@ const topUp = async(amount,userId)=>{
     }
 }
 
+const refundFunction = (async(transactionId) => {
+    const transaction = await Transaction.findOne({transactionId})
+
+    if(!transaction) {
+        throw new Error("Transaction Not Found")
+    } 
+    if(transaction.status !== "Completed") {
+        throw new Error("Only Completed transactions can be refunded")
+    }
+    stripe.refunds.create({
+        payment_intent: transactionId
+    })
+
+    transaction.status = "REFUNDED"
+    await transaction.save()
+
+})
+
+
 //improve function with session
 const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
     const session = await mongoose.startSession()
@@ -144,7 +163,8 @@ module.exports = {
     getUsersList,
     userLogin,
     getTransactions,
-    topUp
+    topUp,
+    refundFunction
 }
 
 //yst id i paramov ugharkvac gtnelu enq ov e sendery, 
