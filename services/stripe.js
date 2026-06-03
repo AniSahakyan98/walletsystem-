@@ -52,8 +52,19 @@ const handleStripeEvent = async(event) => {
         
 
     }
-}
 
+    if(event.type === "payment_intent.payment_failed") {
+        const paymentIntent = event.data.object
+        const transactionId = paymentIntent.id
+
+         await Transaction.findOneAndUpdate(
+            { transactionId },
+            { $set: { status : "FAILED" }},
+            { new:true }
+         );
+    }
+}
+//think when failed type ?
 module.exports = {
     handleStripeEvent
 }

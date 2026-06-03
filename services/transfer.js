@@ -173,6 +173,90 @@ const getTransactions = (async(id) => {
 })
 
 
+// Transaction analytics API (BEST NEXT STEP)
+// Instead of UI charts, you expose data APIs like:
+
+// monthly income/expense summary
+// total sent / received
+// top counterparties
+// daily/weekly stats
+
+// Example endpoints:
+
+// GET /analytics/summary
+// GET /analytics/monthly
+// GET /analytics/top-users
+
+const summary = (async(walletId) => {
+    const user = await User.findOne({walletId})
+    const id = user._id
+
+    const spending = await Transaction.aggregate([{$match: {fromUser: id}}, 
+    {$group: {
+        _id: null,
+        totalSpending: {$sum: "$amount"} 
+        }
+    }])
+
+    const revenue = await Transaction.aggregate([{$match: {to: id}},
+    {$group: {
+        _id: null,
+        totalRevenue: {$sum: "$amount"}
+    }
+    }])
+  
+   
+    return {spending,revenue}
+
+})
+
+//to- ins
+const dateFilter = (async(walletId,period) => {
+    const user = await User.findOne({walletId: walletId})
+     if(period === "weekly") {
+        const oneWeekAgo = new Date()
+        oneWeekAgo.setDate(oneWeekAgo.getDate()-7)
+
+        const transaction = await Transaction.find({
+            to: user._id,
+            createdAt: {$gte: oneWeekAgo}
+        })
+
+        return transaction
+     } else if (period === "monthly") {
+        const oneMonthAgo = new Date()
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth()-1)
+        //console.log(oneMonthAgo)
+
+        const transaction = await Transaction.find({
+            to: user._id,
+            createdAt: {$gte: oneMonthAgo}
+        })
+
+        return transaction
+     } else if (period === "daily") {
+        const startOfDay = new Date()
+        startOfDay.setHours(0, 0, 0, 0)
+
+        const endOfDay = new Date()
+        endOfDay.setHours(23, 59, 59, 999)
+        
+        const transaction = await Transaction.find({
+            to: user._id,
+            createdAt: {$gte: startOfDay,
+                        $lte: endOfDay
+                        }
+        })
+
+        return transaction
+     }
+
+     
+
+})
+
+
+    
 
 
 module.exports = {
@@ -182,7 +266,9 @@ module.exports = {
     getTransactions,
     topUp,
     refundFunction,
-    getUserInfo
+    getUserInfo,
+    summary,
+    dateFilter
 }
 
 //yst id i paramov ugharkvac gtnelu enq ov e sendery, 

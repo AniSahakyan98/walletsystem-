@@ -86,6 +86,44 @@ const getUserInfo = (async(req,res) =>{
     }
 })
 
+const summary = (async(req,res) => {
+    try {
+    const walletId = req.params.id
+    const summary = await services.summary(walletId)
+        if(summary.spending.length !== 0 && summary.revenue.length !== 0){
+            return res.status(200).json({
+                "spending": summary.spending[0].totalSpending,
+                "revenue": summary.revenue[0].totalRevenue
+            })
+        } else if(summary.spending.length === 0) {
+            return res.status(200).json({
+                "revenue": summary.revenue[0].totalRevenue
+            })
+        } else if(summary.revenue.length === 0){
+            return res.status(200).json({
+                "spending": summary.spending[0].totalSpending
+            })
+        }
+    } catch(error) {
+        return res.status(500).json({error: error.message})
+    }
+})
+
+
+const dateFilter = (async(req,res) => {
+    try {
+        const period = req.query.period
+        const walletId = req.query.walletId
+
+        const result = await services.dateFilter(walletId,period)
+        return res.status(200).json(result)
+    } catch(error) {
+        return res.status(500).json({error: error.message})
+    }
+})
+
+
+
 module.exports = {
     transactionBalanceController,
     getUserList,
@@ -93,6 +131,8 @@ module.exports = {
     getTransactions,
     topUp,
     refundFunction,
-    getUserInfo
+    getUserInfo,
+    summary,
+    dateFilter
 }
 

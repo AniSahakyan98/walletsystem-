@@ -12,5 +12,8 @@ Router.post('/wallet/topUp',authMiddleware,controller.topUp)
 Router.post('/stripe/webhook',stripeController.webhookController)
 Router.post('/refund/:id',controller.refundFunction)
 Router.get('/userInfo/:id',controller.getUserInfo)
+Router.get('/analytics/:id', controller.summary)
+Router.get('/filter', controller.dateFilter)
+
 module.exports = Router
 
