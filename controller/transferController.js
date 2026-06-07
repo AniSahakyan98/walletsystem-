@@ -122,7 +122,15 @@ const dateFilter = (async(req,res) => {
     }
 })
 
-
+const getBalanceFromLedger = (async(req,res) => {
+    try {
+    const id = req.params.id
+    const result = await services.getBalanceFromLedger(id)
+        return res.status(200).json(result)
+    } catch (error) {
+        return res.status(500).json({error: error.message})
+    }
+})
 
 module.exports = {
     transactionBalanceController,
@@ -133,6 +141,7 @@ module.exports = {
     refundFunction,
     getUserInfo,
     summary,
-    dateFilter
+    dateFilter,
+    getBalanceFromLedger
 }
 

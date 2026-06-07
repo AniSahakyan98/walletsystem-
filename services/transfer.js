@@ -1,6 +1,7 @@
 const { format } = require('mysql2')
 const Transaction = require('../models/transactionDetailsSchema')
 const User = require('../models/usersSchema')
+const Ledger = require('../models/ledgerEntries')
 const stripe = require('../stripe')
 const jwt = require('jsonwebtoken')
 const mongoose = require("mongoose")
@@ -103,32 +104,54 @@ const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
     try{ 
     session.startTransaction()
 
-    const sender = await User.findOne({ walletId: senderWalletId }).session(session); 
-    const recipient = await User.findOne({ walletId: recipientWalletId}).session(session);
-    
-    
-    if(!sender || !recipient){
-        throw new Error("User not found")
-    }
     if (amount <= 0) {
         throw new Error("Amount must be greater than 0"); 
     } 
     if(sender.walletId === recipient.walletId){
         throw new Error("Sender and recipient can not be the same");
     }
-    if (sender.balance < amount) {
-        throw new Error("Insufficient Balance");
+
+    const sender = await User.findOne({ walletId: senderWalletId }).session(session); 
+    const recipient = await User.findOne({ walletId: recipientWalletId}).session(session);
+    
+    if(!sender || !recipient){
+        throw new Error("User not found")
+    }
+    
+    const debitResult = await User.updateOne(
+    {
+        _id: sender._id,
+        balance: {$gte: amount}
+    },
+    {$inc: {balance: -amount}},
+    {session})
+
+    if(debitResult.modifiedCount === 0) {
+        throw new Error("Insufficient balance")
     }
 
-        await User.updateOne(
-            {_id: sender._id},
-            {$inc: {balance: -amount}}
-        ).session(session)
+    await User.updateOne(
+        {_id: recipient._id},
+        {$inc: {balance: amount}},
+        {session}
+    )
 
-        await User.updateOne(
-            {_id: recipient._id},
-            {$inc: {balance: amount}}
-        ).session(session)
+
+        const transactId = Date.now()
+        const ledgerEntry = await Ledger.create([{
+            transactionId: transactId,
+            userId: sender._id,
+            type: "DEBIT",
+            amount
+        },
+        { 
+            transactionId: transactId,
+            userId: recipient._id,
+            type: "CREDIT",
+            amount
+        }], {session,
+            ordered: true})
+
 
         transaction = await Transaction.create([{
                 transactionId: Date.now(),
@@ -137,12 +160,16 @@ const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
                 fromUser: sender._id,
                 to: recipient._id
         }],{session})
+
+
          
         await session.commitTransaction()
         return {
             "transactionId": transaction[0].transactionId,
-            "senderWallet": sender,
-            "recipientWallet": recipient
+            amount,
+            "status": "Completed",
+            "senderWallet": sender.balance - amount,
+            "recipientWallet": recipient.balance + amount
             }
         } catch(error) {
            await session.abortTransaction()
@@ -251,11 +278,32 @@ const dateFilter = (async(walletId,period) => {
         return transaction
      }
 
-     
-
 })
 
+const getBalanceFromLedger = (async(walletId) => {
+    const user = await User.findOne({walletId:walletId})
+    const id = user._id
 
+    const debit = await Ledger.aggregate([
+        {$match: {type: "DEBIT",userId: id}},
+        {$group : {
+            _id: null,
+            totalDebit: {$sum: "$amount"}
+        }}
+    ])
+    const credit = await Ledger.aggregate([
+        {$match: {type: "CREDIT",userId: id}},
+        {$group : {
+            _id: null,
+            totalCredit: {$sum: "$amount"}
+        }}
+    ])
+    //console.log(credit)
+
+    
+    const balance = debit[0].totalDebit - credit[0].totalCredit
+    return {"balance": balance}
+})
     
 
 
@@ -268,7 +316,8 @@ module.exports = {
     refundFunction,
     getUserInfo,
     summary,
-    dateFilter
+    dateFilter,
+    getBalanceFromLedger
 }
 
 //yst id i paramov ugharkvac gtnelu enq ov e sendery, 

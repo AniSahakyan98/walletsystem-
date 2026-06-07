@@ -1,6 +1,6 @@
 const User = require('../models/usersSchema')
 const Transaction = require('../models/transactionDetailsSchema')
-
+const Ledger = require('../models/ledgerEntries')
 
 //✅ JWT authentication
 // ✅ Protected routes with middleware
@@ -21,8 +21,9 @@ const handleStripeEvent = async(event) => {
         const amount = paymentIntent.amount / 100
         const walletId = paymentIntent.metadata.userId
         const user = await User.findOne({ walletId })
+        console.log(user)
         const transactionId = paymentIntent.id
-
+        
         if (!user) {
             throw new Error("User not found for webhook");
         }
@@ -33,14 +34,29 @@ const handleStripeEvent = async(event) => {
             throw new Error("Transaction is already completed")
         }; //if (transaction.status === "Completed") return;
         
+        console.log(existing.to)
        
         if (existing) {
-
+            
             await Transaction.findOneAndUpdate(
             { transactionId },
             { $set: { status : "Completed" } },
             { new:true }
             );
+
+            await Ledger.create({
+                transactionId,
+                "provider" : existing.fromSystem,
+                "type": "CREDIT",
+                amount
+            },
+            {
+                transactionId,
+                "userId" : existing.to._id,  //haskanal bugy inchi a null grvum ledgeri mej- voric heto haskanal vonc anel vor balance ledger ov hashvarkvi
+                "type": "DEBIT",
+                amount
+            }
+            )
 
         } else {
             throw new Error("No existing pending transaction")
