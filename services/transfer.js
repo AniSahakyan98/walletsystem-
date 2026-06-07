@@ -107,13 +107,15 @@ const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
     if (amount <= 0) {
         throw new Error("Amount must be greater than 0"); 
     } 
-    if(sender.walletId === recipient.walletId){
-        throw new Error("Sender and recipient can not be the same");
-    }
+    
 
     const sender = await User.findOne({ walletId: senderWalletId }).session(session); 
     const recipient = await User.findOne({ walletId: recipientWalletId}).session(session);
     
+    if(sender.walletId === recipient.walletId){
+        throw new Error("Sender and recipient can not be the same");
+    }
+
     if(!sender || !recipient){
         throw new Error("User not found")
     }
@@ -299,9 +301,21 @@ const getBalanceFromLedger = (async(walletId) => {
         }}
     ])
     //console.log(credit)
-
+    let debitTotal;
+    if(debit.length !== 0) {
+        debitTotal = debit[0].totalDebit
+    } else {
+        debitTotal = 0
+    }
     
-    const balance = debit[0].totalDebit - credit[0].totalCredit
+    let creditTotal;
+    if(credit.length !== 0) {
+        creditTotal = credit[0].totalCredit
+    } else {
+        creditTotal = 0
+    }
+    
+    const balance = creditTotal - debitTotal
     return {"balance": balance}
 })
     

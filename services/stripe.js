@@ -18,7 +18,7 @@ const handleStripeEvent = async(event) => {
     if(event.type === "payment_intent.succeeded") {
 
         const paymentIntent = event.data.object
-        const amount = paymentIntent.amount / 100
+        const amount = paymentIntent.amount
         const walletId = paymentIntent.metadata.userId
         const user = await User.findOne({ walletId })
         console.log(user)
@@ -47,13 +47,13 @@ const handleStripeEvent = async(event) => {
             await Ledger.create({
                 transactionId,
                 "provider" : existing.fromSystem,
-                "type": "CREDIT",
+                "type": "DEBIT",
                 amount
             },
             {
                 transactionId,
-                "userId" : existing.to._id,  //haskanal bugy inchi a null grvum ledgeri mej- voric heto haskanal vonc anel vor balance ledger ov hashvarkvi
-                "type": "DEBIT",
+                "userId" : existing.to._id,  //voric heto haskanal vonc anel vor balance ledger ov hashvarkvi
+                "type": "CREDIT",
                 amount
             }
             )
