@@ -132,6 +132,15 @@ const getBalanceFromLedger = (async(req,res) => {
     }
 })
 
+const topUsers = (async(req,res) => {
+    try {
+        const result = await services.topUsers()
+        return res.status(200).json(result)
+    } catch(error) {
+      return res.status(500).json({error: error.message})
+    }
+})
+
 module.exports = {
     transactionBalanceController,
     getUserList,
@@ -142,6 +151,7 @@ module.exports = {
     getUserInfo,
     summary,
     dateFilter,
-    getBalanceFromLedger
+    getBalanceFromLedger,
+    topUsers
 }
 

@@ -15,6 +15,7 @@ Router.get('/userInfo/:id',controller.getUserInfo)
 Router.get('/analytics/:id', controller.summary)
 Router.get('/filter', controller.dateFilter)
 Router.get('/getBalance/:id', controller.getBalanceFromLedger)
+Router.get('/getTopUsers', controller.topUsers)
 
 
 module.exports = Router

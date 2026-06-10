@@ -282,44 +282,86 @@ const dateFilter = (async(walletId,period) => {
 
 })
 
-const getBalanceFromLedger = (async(walletId) => {
+const getBalanceFromLedger = async(walletId) => {
     const user = await User.findOne({walletId:walletId})
+    if (!user) {
+    throw new Error("User not found");
+}
     const id = user._id
 
-    const debit = await Ledger.aggregate([
-        {$match: {type: "DEBIT",userId: id}},
+    const result = await Ledger.aggregate([
+        {$match: {userId: id}},
         {$group : {
-            _id: null,
-            totalDebit: {$sum: "$amount"}
+            _id: "$type",
+            total: {$sum: "$amount"}
         }}
     ])
-    const credit = await Ledger.aggregate([
-        {$match: {type: "CREDIT",userId: id}},
-        {$group : {
-            _id: null,
-            totalCredit: {$sum: "$amount"}
-        }}
-    ])
-    //console.log(credit)
-    let debitTotal;
-    if(debit.length !== 0) {
-        debitTotal = debit[0].totalDebit
-    } else {
-        debitTotal = 0
-    }
+     
+    let debitTotal = 0;
+    let creditTotal = 0;
+
+    result.forEach((item) => {
+       if (item._id === "CREDIT") creditTotal = item.total
+       if (item._id === "DEBIT")  debitTotal = item.total
+    })
     
-    let creditTotal;
-    if(credit.length !== 0) {
-        creditTotal = credit[0].totalCredit
-    } else {
-        creditTotal = 0
-    }
     
     const balance = creditTotal - debitTotal
     return {"balance": balance}
-})
+}
     
 
+//Turn wallet into a game:top senders, top receivers
+//fund _id s and replace with names - this part pending
+
+const topUsers = async() => {
+
+    const senders = await Ledger.aggregate([
+        {$match: {"type" : "DEBIT"}},
+        {$group: {
+            _id: "$userId",
+            "total": {$sum : "$amount"}
+        }},
+        {$sort: {total: -1}}
+    ])
+
+    const topSenders = await Promise.all(
+        senders.filter((item) => {
+        return item._id !== null
+    }).map(async(item) => {
+       
+       const user = await User.findOne({_id: item._id})
+       item.name = user.name
+       delete item._id
+       return item
+    }))
+
+    const receivers = await Ledger.aggregate([
+        {$match: {"type" : "CREDIT"}},
+        {$group: {
+            _id: "$userId",
+            "total": {$sum : "$amount"}
+        }},
+        {$sort: {total: -1}}
+    ])
+
+    const topReceivers = await Promise.all(
+        receivers.filter((item) => {
+        return item._id !== null
+       }
+    ).map(async(item) => {
+       
+       const user = await User.findOne({_id: item._id})
+       item.name = user.name
+       delete item._id
+       return item
+    }))
+
+   
+
+    return {"topSenders": topSenders, "topReceivers": topReceivers }
+    
+}
 
 module.exports = {
     transferBalance,
@@ -331,7 +373,8 @@ module.exports = {
     getUserInfo,
     summary,
     dateFilter,
-    getBalanceFromLedger
+    getBalanceFromLedger,
+    topUsers
 }
 
 //yst id i paramov ugharkvac gtnelu enq ov e sendery, 
