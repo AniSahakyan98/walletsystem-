@@ -141,6 +141,15 @@ const topUsers = (async(req,res) => {
     }
 })
 
+const getMisMatches = (async(req,res) => {
+    try {
+        const result = await services.getMisMatches()
+        return res.status(200).json(result)
+    } catch(error) {
+        return res.status(500).json({error: error.message})
+    }
+})
+
 module.exports = {
     transactionBalanceController,
     getUserList,
@@ -152,6 +161,7 @@ module.exports = {
     summary,
     dateFilter,
     getBalanceFromLedger,
-    topUsers
+    topUsers,
+    getMisMatches
 }
 

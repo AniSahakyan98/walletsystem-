@@ -2,7 +2,6 @@ const { format } = require('mysql2')
 const Transaction = require('../models/transactionDetailsSchema')
 const User = require('../models/usersSchema')
 const Ledger = require('../models/ledgerEntries')
-const stripe = require('../stripe')
 const jwt = require('jsonwebtoken')
 const mongoose = require("mongoose")
 
@@ -38,6 +37,7 @@ const getUsersList = (async() => {
 
 //backend sends amount info to stripe by paymentIntents and Frontend uses client_secret to complete payment securely
 const topUp = async(amount,userId)=>{
+    const stripe = require('../stripe');
     const paymentIntent = await stripe.paymentIntents.create({
         amount: amount * 100,
         currency: "usd",
@@ -112,6 +112,8 @@ const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
     const sender = await User.findOne({ walletId: senderWalletId }).session(session); 
     const recipient = await User.findOne({ walletId: recipientWalletId}).session(session);
     
+    // console.log("Sender balance:", sender.balance)
+    // console.log("Transfer amount:", amount)
     if(sender.walletId === recipient.walletId){
         throw new Error("Sender and recipient can not be the same");
     }
@@ -128,6 +130,7 @@ const transferBalance = (async(amount,senderWalletId,recipientWalletId) => {
     {$inc: {balance: -amount}},
     {session})
 
+    console.log(debitResult)
     if(debitResult.modifiedCount === 0) {
         throw new Error("Insufficient balance")
     }
@@ -314,6 +317,9 @@ const getBalanceFromLedger = async(walletId) => {
 //Turn wallet into a game:top senders, top receivers
 //fund _id s and replace with names - this part pending
 
+
+
+//cashback rewards
 const topUsers = async() => {
 
     const senders = await Ledger.aggregate([
@@ -363,6 +369,40 @@ const topUsers = async() => {
     
 }
 
+//reconciliation system
+
+const getMisMatches = (async() => {
+    const users = await User.find()
+
+    const result = await Promise.all(users.map(async(item) => {
+        const ledger = await getBalanceFromLedger(item.walletId)
+        console.log(ledger)
+        const ledgerBalance = ledger.balance
+        if(item.balance === ledgerBalance) {
+        return {
+            "walletId": item.walletId,
+            "storedBalance": item.balance,
+            "ledgerBalance": ledgerBalance,
+            "status" : "OK"
+            }
+            
+        } else {
+            return {
+            "walletId": item.walletId,
+            "storedBalance": item.balance,
+            "ledgerBalance": ledgerBalance,
+            "status" : `MisMatch of ${ledgerBalance - item.balance}`
+            }
+        }
+    }))
+
+    return result
+})
+
+
+//recurrning transfers
+
+
 module.exports = {
     transferBalance,
     getUsersList,
@@ -374,7 +414,8 @@ module.exports = {
     summary,
     dateFilter,
     getBalanceFromLedger,
-    topUsers
+    topUsers,
+    getMisMatches
 }
 
 //yst id i paramov ugharkvac gtnelu enq ov e sendery, 

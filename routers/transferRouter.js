@@ -1,6 +1,7 @@
 const express = require('express')
 const controller = require('../controller/transferController')
 const stripeController = require('../controller/stripeController')
+const autopaymentController = require('../controller/autopaymentController')
 const authMiddleware = require('../middleware/authMiddleware')
 const Router = express.Router()
 
@@ -16,6 +17,10 @@ Router.get('/analytics/:id', controller.summary)
 Router.get('/filter', controller.dateFilter)
 Router.get('/getBalance/:id', controller.getBalanceFromLedger)
 Router.get('/getTopUsers', controller.topUsers)
+Router.get('/mismatches',controller.getMisMatches)
+Router.post('/recurringPayments/:id',autopaymentController.autopaymentConfig)
+
+
 
 
 module.exports = Router

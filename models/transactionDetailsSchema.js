@@ -15,6 +15,12 @@ const transactionSchema = new Schema ({
         enum: ["PENDING","FAILED","Completed","REFUNDED"],
         required: true
     },
+    
+    // type: {
+    //     type: String,
+    //     enum: ["SIMPLE","AUTOPAYMENT"],
+    //     required: true
+    // },
     fromUser: { 
         type : mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -28,9 +34,16 @@ const transactionSchema = new Schema ({
         type : mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true
-    },
+    }
 
 },{timestamps: true})
+
+// transactionSchema.pre("save", function(next) {
+//     if(this.type === "SIMPLE"){
+//         this.schedule = undefined
+//     } 
+//     next()
+// })
 
 const Transaction = mongoose.model('Transaction',transactionSchema)
 module.exports = Transaction
